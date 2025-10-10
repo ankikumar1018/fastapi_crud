@@ -2,5 +2,3 @@ fastapi
 uvicorn
 sqlalchemy
 passlib[argon2]
-httpx
-pytest
