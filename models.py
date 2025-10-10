@@ -8,6 +8,8 @@ class Item(Base):
     name = Column(String, index=True)
     description = Column(String, index=True)
     price = Column(Integer)
+    owner_id = Column(Integer, index=True)
+
 
 class User(Base):
     __tablename__ = "users"

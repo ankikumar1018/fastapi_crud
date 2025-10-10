@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-# Item Schemas
+# ----------------- Item Schemas -----------------
 class ItemBase(BaseModel):
     name: str
     description: str
@@ -14,7 +14,8 @@ class Item(ItemBase):
     class Config:
         orm_mode = True
 
-# User Schemas
+
+# ----------------- User Schemas -----------------
 class UserBase(BaseModel):
     username: str
 
@@ -25,3 +26,7 @@ class User(UserBase):
     id: int
     class Config:
         orm_mode = True
+
+class ChangePassword(BaseModel):
+    old_password: str
+    new_password: str

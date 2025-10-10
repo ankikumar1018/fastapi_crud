@@ -1,0 +1,2 @@
+[tool.pytest.ini_options]
+python_files = ["tests.py", "*_test.py", "test_*.py"]
