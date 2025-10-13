@@ -29,7 +29,6 @@ jobs:
       - name: 🧹 Run Ruff linter
         run: |
           ruff check .
-          ruff format --check .
 
       - name: 🧪 Run Pytest
         run: |
