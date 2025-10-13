@@ -1,37 +1,65 @@
+# auth.py
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from passlib.hash import argon2
 from sqlalchemy.orm import Session
-import crud, models, schemas
-from database import get_db
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+from database import get_db
+from models import User
+from schemas import ChangePasswordRequest, UserCreate
+
+router = APIRouter(prefix="/auth", tags=["Auth"])
 security = HTTPBasic()
 
 
-# Dependency to get current user
-def get_current_user(credentials: HTTPBasicCredentials = Depends(security), db: Session = Depends(get_db)):
-    user = crud.authenticate_user(db, credentials.username, credentials.password)
-    if not user:
+def get_current_user(
+    credentials: HTTPBasicCredentials = Depends(security), db: Session = Depends(get_db)
+):
+    """Authenticate user using Basic Auth."""
+    user = db.query(User).filter(User.username == credentials.username).first()
+    if not user or not argon2.verify(credentials.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail="Invalid credentials",
             headers={"WWW-Authenticate": "Basic"},
         )
     return user
 
 
-# Public registration
-@router.post("/signup", response_model=schemas.User)
-def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    db_user = db.query(models.User).filter(models.User.username == user.username).first()
-    if db_user:
+@router.post("/signup")
+def signup(user: UserCreate, db: Session = Depends(get_db)):
+    """Public signup endpoint — expects JSON { username, password }."""
+    username = user.username
+    password = user.password
+
+    if not username or not password:
+        raise HTTPException(status_code=400, detail="Username and password required")
+
+    existing_user = db.query(User).filter(User.username == username).first()
+    if existing_user:
         raise HTTPException(status_code=400, detail="Username already exists")
-    return crud.create_user(db, user)
+
+    hashed_pw = argon2.hash(password)
+    user = User(username=username, hashed_password=hashed_pw)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return {"message": "User created successfully", "username": username}
 
 
-# Change password (protected)
-@router.post("/change-password", response_model=schemas.User)
-def change_password(password_data: schemas.ChangePassword, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if not crud.verify_password(password_data.old_password, current_user.hashed_password):
+@router.get("/me")
+def read_users_me(current_user: User = Depends(get_current_user)):
+    """Protected endpoint — requires Basic Auth."""
+    return {"username": current_user.username}
+
+
+@router.put("/change-password")
+def change_password(data: ChangePasswordRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not argon2.verify(data.old_password, current_user.hashed_password):
         raise HTTPException(status_code=400, detail="Old password is incorrect")
-    return crud.change_password(db, current_user, password_data.new_password)
+
+    current_user.hashed_password = argon2.hash(data.new_password)
+    db.commit()
+    db.refresh(current_user)
+    return {"message": "Password updated successfully"}

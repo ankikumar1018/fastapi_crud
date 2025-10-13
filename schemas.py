@@ -1,6 +1,9 @@
-from pydantic import BaseModel
+from typing import Optional
 
-# ----------------- Item Schemas -----------------
+from pydantic import BaseModel, ConfigDict
+
+
+# --- Item Schemas ---
 class ItemBase(BaseModel):
     name: str
     description: str
@@ -9,13 +12,19 @@ class ItemBase(BaseModel):
 class ItemCreate(ItemBase):
     pass
 
+class ItemUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    price: Optional[int] = None
+
 class Item(ItemBase):
     id: int
-    class Config:
-        orm_mode = True
+    owner_id: int
+
+    model_config = ConfigDict(from_attributes = True)
 
 
-# ----------------- User Schemas -----------------
+# --- User Schemas ---
 class UserBase(BaseModel):
     username: str
 
@@ -24,9 +33,10 @@ class UserCreate(UserBase):
 
 class User(UserBase):
     id: int
-    class Config:
-        orm_mode = True
 
-class ChangePassword(BaseModel):
+    model_config = ConfigDict(from_attributes = True)
+
+class ChangePasswordRequest(BaseModel):
     old_password: str
     new_password: str
+
